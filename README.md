@@ -15,7 +15,7 @@
   - **Sliding-Window Chunker**: Splits text with sentence-boundary awareness and configurable overlap (~1500 chars / 250 overlap).
   - **Deduplication**: SHA-256 content hashing prevents redundant scraping or re-embedding.
 - **Local Ollama AI Integration**:
-  - Automatically discovers installed Ollama models (`nomic-embed-text`, `mxbai-embed-large`, `llama3.2`, `mistral`, `qwen2.5`, etc.).
+  - Automatically discovers installed Ollama models (`nomic-embed-text`, `mxbai-embed-large`, `gemma4:26b-mlx`, `llama3.2`, `mistral`, `qwen2.5`, etc.).
   - Real-time connection health checks and custom model selector.
 - **Fast Semantic Search**:
   - Real-time vector search with configurable **Top-K** and **Minimum Similarity** threshold sliders.
@@ -76,8 +76,8 @@ Pull recommended local models for embeddings and chat:
 # Recommended 768-dim embedding model
 ollama pull nomic-embed-text
 
-# Recommended fast lightweight chat LLM
-ollama pull llama3.2
+# Recommended chat LLM
+ollama pull gemma4:26b-mlx
 ```
 
 ### 2. Installation

@@ -22,7 +22,7 @@ export const OllamaStatusModal: React.FC<OllamaStatusModalProps> = ({
   const [selectedEmbedding, setSelectedEmbedding] = useState(
     status?.activeEmbeddingModel || 'nomic-embed-text'
   );
-  const [selectedChat, setSelectedChat] = useState(status?.activeChatModel || 'llama3.2');
+  const [selectedChat, setSelectedChat] = useState(status?.activeChatModel || 'gemma4:26b-mlx');
   const [isSaving, setIsSaving] = useState(false);
   const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
 
@@ -148,7 +148,7 @@ export const OllamaStatusModal: React.FC<OllamaStatusModalProps> = ({
 
             {[
               { label: 'Embedding Model', cmd: 'ollama pull nomic-embed-text' },
-              { label: 'Chat LLM', cmd: 'ollama pull llama3.2' },
+              { label: 'Chat LLM', cmd: 'ollama pull gemma4:26b-mlx' },
             ].map(({ label, cmd }) => (
               <div
                 key={cmd}

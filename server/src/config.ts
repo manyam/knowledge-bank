@@ -22,7 +22,7 @@ export const config = {
   duckdbPath: process.env.DUCKDB_PATH || path.join(dataDir, 'knowledge_bank.duckdb'),
   ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434',
   defaultEmbeddingModel: process.env.DEFAULT_EMBEDDING_MODEL || 'nomic-embed-text',
-  defaultChatModel: process.env.DEFAULT_CHAT_MODEL || 'llama3.2',
+  defaultChatModel: process.env.DEFAULT_CHAT_MODEL || 'gemma4:26b-mlx',
   chunkSize: parseInt(process.env.CHUNK_SIZE || '1500', 10), // characters
   chunkOverlap: parseInt(process.env.CHUNK_OVERLAP || '250', 10),
   defaultTopK: parseInt(process.env.DEFAULT_TOP_K || '5', 10),
