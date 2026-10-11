@@ -37,6 +37,51 @@ export async function initDatabase(): Promise<void> {
   console.log('[DuckDB] Schema successfully initialized.');
 }
 
+// Ensure global BigInt serialization fallback so JSON.stringify never throws
+if (!(BigInt.prototype as any).toJSON) {
+  (BigInt.prototype as any).toJSON = function () {
+    return Number(this);
+  };
+}
+
+export function normalizeDuckDBValue(val: any): any {
+  if (val === null || val === undefined) {
+    return val;
+  }
+  if (typeof val === 'bigint') {
+    return Number(val);
+  }
+  if (typeof val === 'object') {
+    // DuckDB timestamp with .micros
+    if (typeof val.micros === 'bigint') {
+      const ms = Number(val.micros / 1000n);
+      return new Date(ms).toISOString();
+    }
+    // DuckDB date with .days
+    if (typeof val.days === 'number') {
+      const ms = val.days * 86400000;
+      return new Date(ms).toISOString().split('T')[0];
+    }
+    if (Array.isArray(val)) {
+      return val.map(normalizeDuckDBValue);
+    }
+    // DuckDB list/array or struct with items
+    if (val.items && Array.isArray(val.items)) {
+      return val.items.map(normalizeDuckDBValue);
+    }
+    // If it's a DuckDB object with custom toString
+    if (val.constructor?.name?.startsWith('DuckDB') && typeof val.toString === 'function') {
+      return val.toString();
+    }
+    const copy: any = {};
+    for (const [k, v] of Object.entries(val)) {
+      copy[k] = normalizeDuckDBValue(v);
+    }
+    return copy;
+  }
+  return val;
+}
+
 export async function query<T = any>(sql: string, params: any[] = []): Promise<T[]> {
   const { conn } = await getDb();
   try {
@@ -57,9 +102,7 @@ export async function query<T = any>(sql: string, params: any[] = []): Promise<T
     return rows.map((row) => {
       const obj: any = {};
       for (let i = 0; i < colNames.length; i++) {
-        const val = row[i];
-        // Handle BigInt serialization
-        obj[colNames[i]] = typeof val === 'bigint' ? Number(val) : val;
+        obj[colNames[i]] = normalizeDuckDBValue(row[i]);
       }
       return obj as T;
     });

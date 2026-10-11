@@ -81,7 +81,21 @@ router.post('/', async (req, res) => {
       console.error(`[Source Async Sync Error] ${id}:`, err);
     });
 
-    const newSource = await queryOne<Source>('SELECT * FROM sources WHERE id = ?', [id]);
+    const newSource = await queryOne<Source>(`
+      SELECT 
+        id,
+        type,
+        url,
+        title,
+        description,
+        feed_url as "feedUrl",
+        sync_interval_mins as "syncIntervalMins",
+        last_synced_at as "lastSyncedAt",
+        status,
+        error_message as "errorMessage",
+        created_at as "createdAt"
+      FROM sources WHERE id = ?
+    `, [id]);
     res.status(201).json({ source: newSource });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

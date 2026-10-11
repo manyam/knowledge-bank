@@ -1,3 +1,10 @@
+// Global polyfill for BigInt JSON serialization
+if (!(BigInt.prototype as any).toJSON) {
+  (BigInt.prototype as any).toJSON = function () {
+    return Number(this);
+  };
+}
+
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
