@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Trash2, Sparkles, Layers, BookOpen } from 'lucide-react';
 import { streamChat } from '../../api/client.js';
 import { CitationCard } from './CitationCard.js';
+import { FormattedMessage } from './FormattedMessage.js';
 import type { ChatMessage, SearchResult } from '../../../../shared/types.js';
 
 interface ChatInterfaceProps {
@@ -204,17 +205,24 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpenDocument, do
                         : 'bg-slate-950/90 text-slate-200 border border-slate-800 rounded-tl-sm shadow-sm'
                     }`}
                   >
-                    <div className="whitespace-pre-wrap font-sans">
-                      {message.content}
-                      {message.isStreaming && !message.content && (
-                        <span className="text-slate-500 animate-pulse">
-                          Searching DuckDB vectors and reasoning...
-                        </span>
-                      )}
-                      {message.isStreaming && message.content && (
-                        <span className="inline-block w-1.5 h-3.5 bg-sky-400 ml-1 animate-pulse" />
-                      )}
-                    </div>
+                    {isUser ? (
+                      <div className="whitespace-pre-wrap font-sans">
+                        {message.content}
+                      </div>
+                    ) : (
+                      <div>
+                        {message.isStreaming && !message.content ? (
+                          <span className="text-slate-500 animate-pulse">
+                            Searching DuckDB vectors and reasoning...
+                          </span>
+                        ) : (
+                          <FormattedMessage
+                            content={message.content}
+                            isStreaming={message.isStreaming}
+                          />
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Citations section if available */}

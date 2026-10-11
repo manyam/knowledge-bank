@@ -102,8 +102,7 @@ ${contextText}
 Instructions:
 - Base your answers primarily on the provided context excerpts above.
 - When referencing information from a source, cite it clearly using bracket notation like [Source 1], [Source 2], etc.
-- If the context doesn't contain enough information to answer the question, state honestly that the knowledge bank does not have enough information on that topic, but you may provide a brief helpful general response if appropriate.
-- Be concise, objective, and well-structured using markdown.`;
+- Write in clean, natural prose and plain text paragraphs. Avoid using raw markdown syntax like hashtags (#) for headings or excessive asterisks (**) for bolding. Keep answers direct, readable, and conversational.`;
 
     const messages = [
       { role: 'system' as const, content: systemPrompt },
