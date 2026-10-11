@@ -98,8 +98,8 @@ Run both the Vite frontend and the Express backend concurrently:
 npm run dev
 ```
 
-- **Frontend App**: `http://localhost:5173`
-- **Backend API**: `http://localhost:3001`
+- **Frontend App**: `http://localhost:5005`
+- **Backend API**: `http://localhost:5004`
 
 ### 4. Build for Production
 

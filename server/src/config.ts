@@ -17,7 +17,7 @@ if (!fs.existsSync(dataDir)) {
 }
 
 export const config = {
-  port: parseInt(process.env.PORT || '3001', 10),
+  port: parseInt(process.env.PORT || '5004', 10),
   host: process.env.HOST || '127.0.0.1',
   duckdbPath: process.env.DUCKDB_PATH || path.join(dataDir, 'knowledge_bank.duckdb'),
   ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434',
