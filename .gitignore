@@ -1,0 +1,7 @@
+node_modules/
+dist/
+data/*.duckdb
+data/*.duckdb.tmp
+.env
+.DS_Store
+*.log
