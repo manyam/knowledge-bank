@@ -41,7 +41,7 @@ knowledge-bank/
 │   ├── src/
 │   │   ├── api/client.ts      # Type-safe API client & SSE streaming reader
 │   │   ├── components/        # UI components (Navbar, Sidebar, Modals)
-│   │   │   ├── chat/          # RAG ChatInterface & CitationCard
+│   │   │   ├── chat/          # RAG ChatInterface, VoiceRecorder, CitationCard, FormattedMessage
 │   │   │   ├── documents/     # DocumentLibrary & filters
 │   │   │   ├── search/        # SemanticSearch & SearchResultCard
 │   │   │   └── sources/       # SourceList, AddSourceModal, DocumentReader
@@ -56,13 +56,76 @@ knowledge-bank/
 │       │   ├── rss.ts         # RSS parser & background sync worker
 │       │   ├── chunker.ts     # Sliding window text chunking
 │       │   ├── ollama.ts      # Ollama embedding & chat streaming client
+│       │   ├── voice.ts       # Audio translation & query refinement service
 │       │   └── rag.ts         # Top-K vector retrieval & prompt assembly
-│       └── routes/            # REST API & SSE streaming endpoints
+│       └── routes/            # REST API & SSE streaming endpoints (sources, docs, search, chat, voice, models, stats)
 ├── shared/
 │   └── types.ts               # Shared TypeScript models (Source, Document, Chunk, etc.)
 └── data/
     └── knowledge_bank.duckdb  # Local embedded DuckDB database file
 ```
+
+---
+
+## 🤖 Models Used
+
+| Role | Model | Specs & Purpose |
+| :--- | :--- | :--- |
+| **Vector Embeddings** | **`nomic-embed-text`** | • **768 dimensions**, 8192 token context window.<br>• Generates dense semantic vector embeddings for article chunks and search queries.<br>• Indexed directly into DuckDB's `FLOAT[]` columnar storage. |
+| **Reasoning, RAG & Audio Translation** | **`gemma4:26b-mlx`** | • **26B parameters**, optimized for Apple Silicon (MLX).<br>• Synthesizes multi-turn RAG answers grounded strictly in DuckDB documents.<br>• Powers **Speech-to-Text (STT) translation & refinement**: converts multi-lingual spoken transcripts into crisp English search queries. |
+| *Alternative Chat Models* | `llama3.2`, `mistral`, `qwen2.5` | Fully compatible; dynamically selectable in the **Ollama Configuration** modal. |
+| *Alternative Embeddings* | `mxbai-embed-large`, `all-minilm` | Supported by the embedded DuckDB vector schema. |
+
+---
+
+## 🎙️ Voice Modalities: STT & TTS Pipeline Flow
+
+The **Research Assistant** features a complete bi-directional voice pipeline for hands-free knowledge discovery:
+
+### 1. Speech-to-Text (STT) & Translation Path
+
+Translates multi-lingual spoken voice into polished, searchable queries using the local model:
+
+```mermaid
+flowchart TD
+    A["🎙️ User Voice Input<br/>(Microphone)"] --> B["🌐 Web Speech API<br/>(Real-Time Streaming Recognition)"]
+    B --> C["📝 Raw Audio Transcript<br/>(Live Transcript Preview)"]
+    C --> D["⚡ POST /api/voice/translate<br/>(Server Endpoint)"]
+    D --> E["🧠 Local Model (gemma4:26b-mlx)<br/>• Cross-lingual Translation (ES/FR/DE/ZH → EN)<br/>• Phonetic Correction<br/>• Filler Word Removal (um/uh/like)"]
+    E --> F["🎯 Refined English Query"]
+    F --> G["📐 nomic-embed-text<br/>(Query Embedding Vector)"]
+    G --> H[("🦆 DuckDB Vector Store<br/>list_cosine_similarity()")]
+    H --> I["📑 Top-K Passages + Citations"]
+    I --> J["💬 RAG Assistant Streaming Response"]
+```
+
+#### Step-by-Step STT Breakdown:
+1. **Audio Capture**: The user clicks **Voice** in the RAG Assistant. An animated sound wave visualizer and timer activate while audio is captured.
+2. **Streaming Speech Recognition**: Client-side `SpeechRecognition` / `webkitSpeechRecognition` captures phonemes and produces real-time interim transcripts.
+3. **Local LLM Audio Refinement & Translation**:
+   - The raw transcript is sent to `POST /api/voice/translate`.
+   - The local model (`gemma4:26b-mlx`) translates foreign languages into English, removes filler words (*"um"*, *"uh"*, *"like"*), and reformulates spoken thoughts into a crisp, searchable research query.
+4. **Vector Retrieval & RAG**: The refined query is embedded via `nomic-embed-text`, matched against DuckDB vector chunks via `list_cosine_similarity()`, and passed to the RAG synthesis engine.
+
+---
+
+### 2. Text-to-Speech (TTS) Voice Playback Path
+
+Converts synthesized answers into spoken audio for hands-free listening:
+
+```mermaid
+flowchart TD
+    A["💬 RAG Assistant Answer<br/>(with [Source 1] citations)"] --> B["🎨 FormattedMessage Component<br/>(Parses Markdown Typography)"]
+    B --> C{"🔊 User Clicks 'Listen'"}
+    C --> D["🧹 Speech Preprocessor<br/>• Strips [Source X] citation tags<br/>• Strips raw markdown syntax (` * # _ ~)"]
+    D --> E["🗣️ Web SpeechSynthesis API<br/>(SpeechSynthesisUtterance)"]
+    E --> F["🔊 Local Audio Playback<br/>(with active 'Stop Audio' toggle)"]
+```
+
+#### Step-by-Step TTS Breakdown:
+1. **Response Generation**: The assistant outputs markdown-formatted text with bracketed citations like `[Source 1]`.
+2. **Text Normalization**: When the user clicks **Listen**, the speech preprocessor strips bracketed citations and formatting symbols to prevent awkward phonetic pauses.
+3. **Local Speech Synthesis**: The browser's native `window.speechSynthesis` speaks the answer aloud at a natural cadence with one-click **Stop Audio** controls.
 
 ---
 
