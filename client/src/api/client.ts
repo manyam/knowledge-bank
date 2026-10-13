@@ -6,6 +6,9 @@ import type {
   OllamaStatus,
   SystemStats,
   AddSourceRequest,
+  CsvImportResponse,
+  CsvImportItem,
+  DecipherResult,
 } from '../../../shared/types.js';
 
 const BASE_URL = '/api';
@@ -51,6 +54,50 @@ export async function submitManualContent(
   }
   const data = await res.json();
   return data.source;
+}
+
+export async function importCsvSources(payload: {
+  csvContent?: string;
+  items?: CsvImportItem[];
+}): Promise<CsvImportResponse> {
+  const res = await fetch(`${BASE_URL}/sources/import-csv`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to import CSV sources');
+  }
+  return await res.json();
+}
+
+export async function decipherUrl(url: string): Promise<DecipherResult> {
+  const res = await fetch(`${BASE_URL}/sources/decipher`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to decipher URL');
+  }
+  const data = await res.json();
+  return data.result;
+}
+
+export async function decipherUrlsBatch(urls: string[]): Promise<DecipherResult[]> {
+  const res = await fetch(`${BASE_URL}/sources/decipher`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ urls }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to decipher URLs');
+  }
+  const data = await res.json();
+  return data.results || [];
 }
 
 export async function syncSource(id: string): Promise<void> {

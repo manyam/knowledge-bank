@@ -99,7 +99,7 @@ export interface SystemStats {
 }
 
 export interface AddSourceRequest {
-  type: SourceType;
+  type: SourceType | 'auto';
   url: string;
   title?: string;
   syncIntervalMins?: number;
@@ -110,6 +110,39 @@ export interface ManualContentRequest {
   sourceId: string;
   rawContent: string;
   title?: string;
+}
+
+export interface DecipherResult {
+  url: string;
+  type: SourceType;
+  title?: string;
+  feedUrl?: string;
+  confidence: 'verified' | 'heuristic' | 'fallback';
+  reason: string;
+}
+
+export interface CsvImportItem {
+  url: string;
+  title?: string;
+  type?: SourceType | 'auto';
+  syncIntervalMins?: number;
+}
+
+export interface CsvImportResultItem {
+  url: string;
+  title: string;
+  type: SourceType;
+  status: 'imported' | 'skipped' | 'failed' | 'imported_with_error';
+  message: string;
+  sourceId?: string;
+}
+
+export interface CsvImportResponse {
+  total: number;
+  imported: number;
+  skipped: number;
+  failed: number;
+  results: CsvImportResultItem[];
 }
 
 export interface SearchRequest {
@@ -125,3 +158,4 @@ export interface ChatRequest {
   topK?: number;
   minSimilarity?: number;
 }
+

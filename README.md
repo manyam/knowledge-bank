@@ -10,6 +10,7 @@
   - Uses DuckDB's native `FLOAT[]` vector representation and high-performance `list_cosine_similarity` analytical queries.
   - Zero cloud dependencies, zero external database setup—everything lives in `./data/knowledge_bank.duckdb`.
 - **Intelligent Ingestion Engine**:
+  - **CSV Batch Import & Automatic Feed Deciphering**: Import dozens of sources at once by uploading `.csv`/`.txt` files or pasting raw lines. The engine automatically probes each URL to decipher whether it is an RSS/Atom feed or a web article URL without requiring manual tagging.
   - **URL Scraper**: Uses `@mozilla/readability` and `jsdom` (Firefox Reader Mode engine) to strip web clutter (ads, sidebars, navigation) into clean text.
   - **Manual Text / HTML Fallback**: If an automated URL fetch fails (due to paywalls, Cloudflare bot protection, 403s, or network timeouts), the app prompts the user with an interactive modal to directly paste article text, markdown, or webpage HTML for instant DuckDB indexing.
   - **RSS / Atom Feeds**: Automatically polls feeds (e.g. Hacker News, Substack, ArXiv, TechCrunch) and indexes new articles.

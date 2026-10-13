@@ -1,17 +1,34 @@
 import React, { useState } from 'react';
-import { X, Globe, Rss, Plus, Sparkles, AlertTriangle, FileText, ArrowLeft, Check } from 'lucide-react';
+import {
+  X,
+  Globe,
+  Rss,
+  Plus,
+  Sparkles,
+  AlertTriangle,
+  FileText,
+  ArrowLeft,
+  Check,
+  FileSpreadsheet,
+} from 'lucide-react';
 import type { AddSourceRequest, SourceType } from '../../../../shared/types.js';
 
 interface AddSourceModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (data: AddSourceRequest) => Promise<void>;
+  onOpenCsvImport?: () => void;
 }
 
-export const AddSourceModal: React.FC<AddSourceModalProps> = ({ isOpen, onClose, onAdd }) => {
+export const AddSourceModal: React.FC<AddSourceModalProps> = ({
+  isOpen,
+  onClose,
+  onAdd,
+  onOpenCsvImport,
+}) => {
   if (!isOpen) return null;
 
-  const [type, setType] = useState<SourceType>('url');
+  const [type, setType] = useState<SourceType | 'auto'>('auto');
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
   const [syncInterval, setSyncInterval] = useState(60);
@@ -159,32 +176,63 @@ export const AddSourceModal: React.FC<AddSourceModalProps> = ({ isOpen, onClose,
 
           {/* Normal Mode: Source Type Selector */}
           {!isManualInput && (
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setType('url')}
-                className={`flex items-center justify-center space-x-2 py-3 rounded-xl border text-xs font-medium transition-all ${
-                  type === 'url'
-                    ? 'bg-sky-500/15 border-sky-500 text-sky-400 shadow-sm'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-850'
-                }`}
-              >
-                <Globe className="w-4 h-4" />
-                <span>Web Article / URL</span>
-              </button>
+            <div className="space-y-2">
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setType('auto')}
+                  className={`flex items-center justify-center space-x-1.5 py-2.5 rounded-xl border text-xs font-medium transition-all ${
+                    type === 'auto'
+                      ? 'bg-emerald-500/15 border-emerald-500 text-emerald-400 shadow-sm'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-850'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Auto-Detect</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => setType('rss')}
-                className={`flex items-center justify-center space-x-2 py-3 rounded-xl border text-xs font-medium transition-all ${
-                  type === 'rss'
-                    ? 'bg-amber-500/15 border-amber-500 text-amber-400 shadow-sm'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-850'
-                }`}
-              >
-                <Rss className="w-4 h-4" />
-                <span>RSS / Atom Feed</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setType('url')}
+                  className={`flex items-center justify-center space-x-1.5 py-2.5 rounded-xl border text-xs font-medium transition-all ${
+                    type === 'url'
+                      ? 'bg-sky-500/15 border-sky-500 text-sky-400 shadow-sm'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-850'
+                  }`}
+                >
+                  <Globe className="w-3.5 h-3.5" />
+                  <span>Web Article</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setType('rss')}
+                  className={`flex items-center justify-center space-x-1.5 py-2.5 rounded-xl border text-xs font-medium transition-all ${
+                    type === 'rss'
+                      ? 'bg-amber-500/15 border-amber-500 text-amber-400 shadow-sm'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-850'
+                  }`}
+                >
+                  <Rss className="w-3.5 h-3.5" />
+                  <span>RSS Feed</span>
+                </button>
+              </div>
+
+              {onOpenCsvImport && (
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleClose();
+                      onOpenCsvImport();
+                    }}
+                    className="inline-flex items-center space-x-1 text-[11px] text-emerald-400 hover:text-emerald-300 font-medium"
+                  >
+                    <FileSpreadsheet className="w-3 h-3" />
+                    <span>Have a CSV list? Import multiple sources in batch</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

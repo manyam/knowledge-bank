@@ -10,12 +10,14 @@ import {
   FileText,
   Clock,
   Layers,
+  FileSpreadsheet,
 } from 'lucide-react';
 import type { Source, SourceType } from '../../../../shared/types.js';
 
 interface SourceListProps {
   sources: Source[];
   onAddClick: () => void;
+  onImportCsvClick: () => void;
   onSync: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onViewDocuments: (sourceId: string) => void;
@@ -26,6 +28,7 @@ interface SourceListProps {
 export const SourceList: React.FC<SourceListProps> = ({
   sources,
   onAddClick,
+  onImportCsvClick,
   onSync,
   onDelete,
   onViewDocuments,
@@ -98,6 +101,14 @@ export const SourceList: React.FC<SourceListProps> = ({
           </div>
 
           <button
+            onClick={onImportCsvClick}
+            className="flex items-center space-x-1.5 px-3.5 py-2 bg-slate-850 hover:bg-slate-800 text-slate-200 border border-slate-750 hover:border-slate-700 text-xs font-semibold rounded-xl transition-all shadow-sm"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+            <span>Import CSV</span>
+          </button>
+
+          <button
             onClick={onAddClick}
             className="flex items-center space-x-1.5 px-4 py-2 bg-sky-500 hover:bg-sky-400 text-white text-xs font-semibold rounded-xl shadow-lg shadow-sky-500/20 transition-colors"
           >
@@ -117,13 +128,22 @@ export const SourceList: React.FC<SourceListProps> = ({
           <p className="text-xs text-slate-400 max-w-md mx-auto mt-1 mb-6">
             Add a web page URL or an RSS feed to start indexing articles and documents into your local DuckDB vector store.
           </p>
-          <button
-            onClick={onAddClick}
-            className="inline-flex items-center space-x-2 px-4 py-2 bg-sky-500 hover:bg-sky-400 text-white text-xs font-semibold rounded-xl transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add First Source</span>
-          </button>
+          <div className="flex items-center justify-center space-x-3">
+            <button
+              onClick={onImportCsvClick}
+              className="inline-flex items-center space-x-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold rounded-xl transition-colors"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+              <span>Import from CSV</span>
+            </button>
+            <button
+              onClick={onAddClick}
+              className="inline-flex items-center space-x-2 px-4 py-2 bg-sky-500 hover:bg-sky-400 text-white text-xs font-semibold rounded-xl transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add First Source</span>
+            </button>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -4,6 +4,7 @@ import { Sidebar, type ActiveTab } from './components/Sidebar.js';
 import { SourceList } from './components/sources/SourceList.js';
 import { AddSourceModal } from './components/sources/AddSourceModal.js';
 import { ManualContentModal } from './components/sources/ManualContentModal.js';
+import { CsvImportModal } from './components/sources/CsvImportModal.js';
 import { DocumentReaderModal } from './components/sources/DocumentReaderModal.js';
 import { SemanticSearch } from './components/search/SemanticSearch.js';
 import { ChatInterface } from './components/chat/ChatInterface.js';
@@ -37,6 +38,7 @@ export const App: React.FC = () => {
 
   // Modals
   const [isAddSourceOpen, setIsAddSourceOpen] = useState(false);
+  const [isCsvImportOpen, setIsCsvImportOpen] = useState(false);
   const [manualContentSource, setManualContentSource] = useState<Source | null>(null);
   const [isOllamaModalOpen, setIsOllamaModalOpen] = useState(false);
   const [readingDocId, setReadingDocId] = useState<string | null>(null);
@@ -146,6 +148,7 @@ export const App: React.FC = () => {
             <SourceList
               sources={sources}
               onAddClick={() => setIsAddSourceOpen(true)}
+              onImportCsvClick={() => setIsCsvImportOpen(true)}
               onSync={handleSyncSource}
               onDelete={handleDeleteSource}
               onViewDocuments={handleViewSourceDocuments}
@@ -186,6 +189,13 @@ export const App: React.FC = () => {
         isOpen={isAddSourceOpen}
         onClose={() => setIsAddSourceOpen(false)}
         onAdd={handleAddSource}
+        onOpenCsvImport={() => setIsCsvImportOpen(true)}
+      />
+
+      <CsvImportModal
+        isOpen={isCsvImportOpen}
+        onClose={() => setIsCsvImportOpen(false)}
+        onSuccess={loadData}
       />
 
       <ManualContentModal
