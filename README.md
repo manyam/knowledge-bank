@@ -11,6 +11,7 @@
   - Zero cloud dependencies, zero external database setup—everything lives in `./data/knowledge_bank.duckdb`.
 - **Intelligent Ingestion Engine**:
   - **URL Scraper**: Uses `@mozilla/readability` and `jsdom` (Firefox Reader Mode engine) to strip web clutter (ads, sidebars, navigation) into clean text.
+  - **Manual Text / HTML Fallback**: If an automated URL fetch fails (due to paywalls, Cloudflare bot protection, 403s, or network timeouts), the app prompts the user with an interactive modal to directly paste article text, markdown, or webpage HTML for instant DuckDB indexing.
   - **RSS / Atom Feeds**: Automatically polls feeds (e.g. Hacker News, Substack, ArXiv, TechCrunch) and indexes new articles.
   - **Sliding-Window Chunker**: Splits text with sentence-boundary awareness and configurable overlap (~1500 chars / 250 overlap).
   - **Deduplication**: SHA-256 content hashing prevents redundant scraping or re-embedding.
