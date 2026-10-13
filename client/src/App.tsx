@@ -3,6 +3,7 @@ import { Navbar } from './components/Navbar.js';
 import { Sidebar, type ActiveTab } from './components/Sidebar.js';
 import { SourceList } from './components/sources/SourceList.js';
 import { AddSourceModal } from './components/sources/AddSourceModal.js';
+import { ManualContentModal } from './components/sources/ManualContentModal.js';
 import { DocumentReaderModal } from './components/sources/DocumentReaderModal.js';
 import { SemanticSearch } from './components/search/SemanticSearch.js';
 import { ChatInterface } from './components/chat/ChatInterface.js';
@@ -12,6 +13,7 @@ import { OllamaStatusModal } from './components/OllamaStatusModal.js';
 import {
   fetchSources,
   addSource,
+  submitManualContent,
   syncSource,
   deleteSource,
   fetchDocuments,
@@ -35,6 +37,7 @@ export const App: React.FC = () => {
 
   // Modals
   const [isAddSourceOpen, setIsAddSourceOpen] = useState(false);
+  const [manualContentSource, setManualContentSource] = useState<Source | null>(null);
   const [isOllamaModalOpen, setIsOllamaModalOpen] = useState(false);
   const [readingDocId, setReadingDocId] = useState<string | null>(null);
 
@@ -75,6 +78,11 @@ export const App: React.FC = () => {
 
   const handleAddSource = async (data: AddSourceRequest) => {
     await addSource(data);
+    await loadData();
+  };
+
+  const handleSubmitManualContent = async (sourceId: string, rawContent: string, title?: string) => {
+    await submitManualContent(sourceId, rawContent, title);
     await loadData();
   };
 
@@ -141,6 +149,7 @@ export const App: React.FC = () => {
               onSync={handleSyncSource}
               onDelete={handleDeleteSource}
               onViewDocuments={handleViewSourceDocuments}
+              onInputManualContent={(src) => setManualContentSource(src)}
               isSyncingId={isSyncingId}
             />
           )}
@@ -177,6 +186,13 @@ export const App: React.FC = () => {
         isOpen={isAddSourceOpen}
         onClose={() => setIsAddSourceOpen(false)}
         onAdd={handleAddSource}
+      />
+
+      <ManualContentModal
+        isOpen={manualContentSource !== null}
+        source={manualContentSource}
+        onClose={() => setManualContentSource(null)}
+        onSubmit={handleSubmitManualContent}
       />
 
       <OllamaStatusModal

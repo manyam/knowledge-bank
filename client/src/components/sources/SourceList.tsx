@@ -19,6 +19,7 @@ interface SourceListProps {
   onSync: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onViewDocuments: (sourceId: string) => void;
+  onInputManualContent?: (source: Source) => void;
   isSyncingId: string | null;
 }
 
@@ -28,6 +29,7 @@ export const SourceList: React.FC<SourceListProps> = ({
   onSync,
   onDelete,
   onViewDocuments,
+  onInputManualContent,
   isSyncingId,
 }) => {
   const [filterType, setFilterType] = useState<'all' | SourceType>('all');
@@ -187,8 +189,18 @@ export const SourceList: React.FC<SourceListProps> = ({
                   </a>
 
                   {source.errorMessage && (
-                    <div className="p-2 mb-3 bg-rose-500/10 border border-rose-500/20 rounded-lg text-[11px] text-rose-300 line-clamp-2">
-                      {source.errorMessage}
+                    <div className="p-2.5 mb-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-[11px] text-rose-300 space-y-1.5">
+                      <div className="line-clamp-2">{source.errorMessage}</div>
+                      {onInputManualContent && (
+                        <button
+                          type="button"
+                          onClick={() => onInputManualContent(source)}
+                          className="inline-flex items-center space-x-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 underline"
+                        >
+                          <FileText className="w-3 h-3" />
+                          <span>Input content manually</span>
+                        </button>
+                      )}
                     </div>
                   )}
 

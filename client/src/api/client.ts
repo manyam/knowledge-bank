@@ -24,8 +24,30 @@ export async function addSource(payload: AddSourceRequest): Promise<Source> {
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || 'Failed to add source');
+    const err = await res.json().catch(() => ({}));
+    const error: any = new Error(err.error || 'Failed to add source');
+    error.fetchFailed = Boolean(err.fetchFailed);
+    error.url = err.url;
+    error.suggestedTitle = err.suggestedTitle;
+    throw error;
+  }
+  const data = await res.json();
+  return data.source;
+}
+
+export async function submitManualContent(
+  sourceId: string,
+  rawContent: string,
+  title?: string
+): Promise<Source> {
+  const res = await fetch(`${BASE_URL}/sources/${sourceId}/manual-content`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rawContent, title }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to submit manual content');
   }
   const data = await res.json();
   return data.source;

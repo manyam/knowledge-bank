@@ -82,3 +82,74 @@ export async function scrapeUrl(targetUrl: string): Promise<ScrapedArticle> {
     throw error;
   }
 }
+
+export function parseContentOrHtml(
+  rawContent: string,
+  targetUrl: string,
+  customTitle?: string
+): ScrapedArticle {
+  const isHtml = /<[a-z][\s\S]*>/i.test(rawContent);
+  let title = customTitle || '';
+  let cleanText = '';
+  let excerpt = '';
+  let author: string | undefined;
+
+  if (isHtml) {
+    try {
+      const dom = new JSDOM(rawContent, {
+        url: targetUrl.startsWith('http') ? targetUrl : 'https://knowledgebank.local',
+      });
+      const reader = new Readability(dom.window.document);
+      const parsed = reader.parse();
+
+      if (parsed) {
+        title = title || parsed.title?.trim() || '';
+        cleanText = parsed.textContent?.trim() || '';
+        excerpt = parsed.excerpt?.trim() || '';
+        author = parsed.byline?.trim() || undefined;
+      }
+
+      if (!cleanText || cleanText.length < 50) {
+        const doc = dom.window.document;
+        doc
+          .querySelectorAll('script, style, noscript, nav, header, footer')
+          .forEach((el) => el.remove());
+        title = title || doc.title || targetUrl;
+        cleanText = (doc.body?.textContent || '').replace(/\s+/g, ' ').trim();
+        excerpt = cleanText.slice(0, 300);
+      }
+    } catch (e) {
+      // Fallback to text below
+    }
+  }
+
+  if (!cleanText) {
+    cleanText = rawContent
+      .replace(/\r\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    if (!title) {
+      const firstLine = cleanText.split('\n')[0]?.trim();
+      title = firstLine && firstLine.length < 100 ? firstLine : targetUrl;
+    }
+    excerpt = cleanText.slice(0, 250) + '...';
+  }
+
+  if (!cleanText || cleanText.length < 10) {
+    throw new Error('Provided content is too short to index');
+  }
+
+  const contentHash = crypto.createHash('sha256').update(cleanText).digest('hex');
+
+  return {
+    url: targetUrl,
+    title: title || targetUrl,
+    author,
+    publishedAt: new Date().toISOString(),
+    cleanText,
+    excerpt,
+    contentHash,
+  };
+}
+

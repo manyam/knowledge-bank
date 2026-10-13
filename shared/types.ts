@@ -103,6 +103,13 @@ export interface AddSourceRequest {
   url: string;
   title?: string;
   syncIntervalMins?: number;
+  rawContent?: string;
+}
+
+export interface ManualContentRequest {
+  sourceId: string;
+  rawContent: string;
+  title?: string;
 }
 
 export interface SearchRequest {

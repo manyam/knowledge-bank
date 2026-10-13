@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Globe, Rss, Plus, Sparkles } from 'lucide-react';
+import { X, Globe, Rss, Plus, Sparkles, AlertTriangle, FileText, ArrowLeft, Check } from 'lucide-react';
 import type { AddSourceRequest, SourceType } from '../../../../shared/types.js';
 
 interface AddSourceModalProps {
@@ -17,6 +17,11 @@ export const AddSourceModal: React.FC<AddSourceModalProps> = ({ isOpen, onClose,
   const [syncInterval, setSyncInterval] = useState(60);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Manual input fallback state
+  const [isManualInput, setIsManualInput] = useState(false);
+  const [rawContent, setRawContent] = useState('');
+  const [fetchFailureReason, setFetchFailureReason] = useState<string | null>(null);
 
   const presets = [
     {
@@ -45,9 +50,28 @@ export const AddSourceModal: React.FC<AddSourceModalProps> = ({ isOpen, onClose,
     },
   ];
 
+  const resetState = () => {
+    setUrl('');
+    setTitle('');
+    setError(null);
+    setIsManualInput(false);
+    setRawContent('');
+    setFetchFailureReason(null);
+  };
+
+  const handleClose = () => {
+    resetState();
+    onClose();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!url.trim()) return;
+
+    if (isManualInput && !rawContent.trim()) {
+      setError('Please paste the article text or HTML content.');
+      return;
+    }
 
     setIsSubmitting(true);
     setError(null);
@@ -58,10 +82,22 @@ export const AddSourceModal: React.FC<AddSourceModalProps> = ({ isOpen, onClose,
         url: url.trim(),
         title: title.trim() || undefined,
         syncIntervalMins: type === 'rss' ? syncInterval : undefined,
+        rawContent: isManualInput && rawContent.trim() ? rawContent.trim() : undefined,
       });
-      onClose();
+      handleClose();
     } catch (err: any) {
-      setError(err.message || 'Failed to add source');
+      console.warn('Add source error:', err);
+
+      // If the fetch failed for a URL, automatically prompt for manual input
+      if (err.fetchFailed || (type === 'url' && !isManualInput)) {
+        setFetchFailureReason(
+          err.message || 'Website blocked automated scraper, returned HTTP error, or timed out.'
+        );
+        setIsManualInput(true);
+        setError(null);
+      } else {
+        setError(err.message || 'Failed to add source');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -71,60 +107,86 @@ export const AddSourceModal: React.FC<AddSourceModalProps> = ({ isOpen, onClose,
     setType(p.type);
     setUrl(p.url);
     setTitle(p.title);
+    setIsManualInput(false);
+    setFetchFailureReason(null);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
           <div className="flex items-center space-x-2">
-            <Plus className="w-5 h-5 text-sky-400" />
-            <h2 className="text-base font-semibold text-white">Add Knowledge Source</h2>
+            {isManualInput ? (
+              <FileText className="w-5 h-5 text-amber-400" />
+            ) : (
+              <Plus className="w-5 h-5 text-sky-400" />
+            )}
+            <h2 className="text-base font-semibold text-white">
+              {isManualInput ? 'Input Source Content Manually' : 'Add Knowledge Source'}
+            </h2>
           </div>
           <button
-            onClick={onClose}
-            className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg"
+            onClick={handleClose}
+            className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
+          {/* Automatic Fetch Failure Prompt Banner */}
+          {isManualInput && fetchFailureReason && (
+            <div className="p-3.5 bg-amber-500/10 border border-amber-500/25 text-amber-300 rounded-xl text-xs space-y-1 animate-in fade-in duration-150">
+              <div className="flex items-center space-x-2 font-semibold">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>Automatic URL fetch could not retrieve content</span>
+              </div>
+              <p className="text-slate-300 text-[11px] pl-6 leading-relaxed">
+                {fetchFailureReason}
+              </p>
+              <p className="text-slate-400 text-[11px] pl-6">
+                Please paste the article text, markdown, or webpage HTML below so it can be chunked and indexed into DuckDB.
+              </p>
+            </div>
+          )}
+
           {error && (
             <div className="p-3 text-xs bg-rose-500/10 border border-rose-500/30 text-rose-300 rounded-xl">
               {error}
             </div>
           )}
 
-          {/* Type Selector */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setType('url')}
-              className={`flex items-center justify-center space-x-2 py-3 rounded-xl border text-xs font-medium transition-all ${
-                type === 'url'
-                  ? 'bg-sky-500/15 border-sky-500 text-sky-400 shadow-sm'
-                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-850'
-              }`}
-            >
-              <Globe className="w-4 h-4" />
-              <span>Web Article / URL</span>
-            </button>
+          {/* Normal Mode: Source Type Selector */}
+          {!isManualInput && (
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setType('url')}
+                className={`flex items-center justify-center space-x-2 py-3 rounded-xl border text-xs font-medium transition-all ${
+                  type === 'url'
+                    ? 'bg-sky-500/15 border-sky-500 text-sky-400 shadow-sm'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-850'
+                }`}
+              >
+                <Globe className="w-4 h-4" />
+                <span>Web Article / URL</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setType('rss')}
-              className={`flex items-center justify-center space-x-2 py-3 rounded-xl border text-xs font-medium transition-all ${
-                type === 'rss'
-                  ? 'bg-amber-500/15 border-amber-500 text-amber-400 shadow-sm'
-                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-850'
-              }`}
-            >
-              <Rss className="w-4 h-4" />
-              <span>RSS / Atom Feed</span>
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => setType('rss')}
+                className={`flex items-center justify-center space-x-2 py-3 rounded-xl border text-xs font-medium transition-all ${
+                  type === 'rss'
+                    ? 'bg-amber-500/15 border-amber-500 text-amber-400 shadow-sm'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-850'
+                }`}
+              >
+                <Rss className="w-4 h-4" />
+                <span>RSS / Atom Feed</span>
+              </button>
+            </div>
+          )}
 
           {/* URL Input */}
           <div>
@@ -144,19 +206,59 @@ export const AddSourceModal: React.FC<AddSourceModalProps> = ({ isOpen, onClose,
           {/* Title Input */}
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Custom Title <span className="text-slate-500 font-normal">(Optional)</span>
+              Article / Source Title <span className="text-slate-500 font-normal">(Optional)</span>
             </label>
             <input
               type="text"
-              placeholder="Leave empty to auto-extract from page or feed"
+              placeholder="Leave empty to auto-detect from content"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500"
             />
           </div>
 
+          {/* Manual Content Textarea (Shown when in Manual Mode) */}
+          {isManualInput ? (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-slate-300">
+                  Article Text or Webpage HTML
+                </label>
+                <span className="text-[11px] text-slate-500">
+                  {rawContent.length > 0 ? `${rawContent.length.toLocaleString()} characters` : 'Required'}
+                </span>
+              </div>
+              <textarea
+                required
+                rows={9}
+                value={rawContent}
+                onChange={(e) => setRawContent(e.target.value)}
+                placeholder="Paste article text, markdown, or webpage HTML here..."
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 font-mono leading-relaxed resize-y"
+              />
+              <p className="text-[11px] text-slate-500 flex items-center space-x-1">
+                <Sparkles className="w-3 h-3 text-sky-400 shrink-0" />
+                <span>
+                  HTML is automatically cleaned with Readability to strip ads and sidebars before indexing.
+                </span>
+              </p>
+            </div>
+          ) : (
+            type === 'url' && (
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={() => setIsManualInput(true)}
+                  className="text-xs text-sky-400 hover:text-sky-300 underline font-medium"
+                >
+                  Need to paste article text or HTML directly? Click here
+                </button>
+              </div>
+            )
+          )}
+
           {/* Sync Interval (for RSS) */}
-          {type === 'rss' && (
+          {!isManualInput && type === 'rss' && (
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                 Auto-Sync Frequency
@@ -175,50 +277,76 @@ export const AddSourceModal: React.FC<AddSourceModalProps> = ({ isOpen, onClose,
             </div>
           )}
 
-          {/* Quick Presets */}
-          <div>
-            <div className="flex items-center space-x-1.5 text-slate-400 text-xs font-semibold mb-2">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>Quick Presets for Testing</span>
+          {/* Quick Presets (Only in normal mode) */}
+          {!isManualInput && (
+            <div>
+              <div className="flex items-center space-x-1.5 text-slate-400 text-xs font-semibold mb-2">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>Quick Presets for Testing</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {presets.map((p) => (
+                  <button
+                    key={p.url}
+                    type="button"
+                    onClick={() => handleApplyPreset(p)}
+                    className="text-left p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-xs transition-colors"
+                  >
+                    <div className="font-medium text-slate-200 truncate">{p.label}</div>
+                    <div className="text-[10px] text-slate-500 truncate">{p.url}</div>
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              {presets.map((p) => (
-                <button
-                  key={p.url}
-                  type="button"
-                  onClick={() => handleApplyPreset(p)}
-                  className="text-left p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-xs transition-colors"
-                >
-                  <div className="font-medium text-slate-200 truncate">{p.label}</div>
-                  <div className="text-[10px] text-slate-500 truncate">{p.url}</div>
-                </button>
-              ))}
-            </div>
-          </div>
+          )}
 
-          {/* Actions */}
-          <div className="pt-2 flex items-center justify-end space-x-3 border-t border-slate-800">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-5 py-2 text-xs font-medium bg-sky-500 hover:bg-sky-400 text-white rounded-xl transition-colors disabled:opacity-50 flex items-center space-x-1.5"
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Adding & Indexing...</span>
-                </>
-              ) : (
-                <span>Add & Start Indexing</span>
-              )}
-            </button>
+          {/* Footer Actions */}
+          <div className="pt-2 flex items-center justify-between border-t border-slate-800">
+            {isManualInput ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsManualInput(false);
+                  setFetchFailureReason(null);
+                }}
+                className="flex items-center space-x-1 text-xs text-slate-400 hover:text-slate-200"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to URL fetch</span>
+              </button>
+            ) : (
+              <div />
+            )}
+
+            <div className="flex items-center space-x-3">
+              <button
+                type="button"
+                onClick={handleClose}
+                className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                disabled={isSubmitting || (isManualInput && !rawContent.trim())}
+                className="px-5 py-2 text-xs font-semibold bg-sky-500 hover:bg-sky-400 text-white rounded-xl shadow-lg shadow-sky-500/20 transition-all disabled:opacity-50 flex items-center space-x-1.5"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>{isManualInput ? 'Indexing Content...' : 'Fetching & Indexing...'}</span>
+                  </>
+                ) : isManualInput ? (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Index Content & Save</span>
+                  </>
+                ) : (
+                  <span>Add & Start Indexing</span>
+                )}
+              </button>
+            </div>
           </div>
         </form>
       </div>

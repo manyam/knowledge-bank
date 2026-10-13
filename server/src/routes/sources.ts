@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { query, queryOne, exec } from '../db/duckdb.js';
-import { syncSource } from '../services/rss.js';
+import { syncSource, processAndIndexDocument } from '../services/rss.js';
+import { scrapeUrl, parseContentOrHtml } from '../services/scraper.js';
 import type { Source, AddSourceRequest } from '../../../shared/types.js';
 
 const router = Router();
@@ -46,57 +47,154 @@ router.get('/', async (_req, res) => {
 // POST /api/sources
 router.post('/', async (req, res) => {
   try {
-    const { type, url, title, syncIntervalMins = 60 } = req.body as AddSourceRequest;
+    const { type, url, title, syncIntervalMins = 60, rawContent } = req.body as AddSourceRequest;
 
     if (!url || !type) {
       return res.status(400).json({ error: 'url and type are required' });
     }
 
     const cleanUrl = url.trim();
+    const sourceTitle = title?.trim() || cleanUrl;
 
     // Check existing
     const existing = await queryOne<Source>('SELECT id FROM sources WHERE url = ?', [cleanUrl]);
-    if (existing) {
+    if (existing && !rawContent) {
       return res.status(409).json({ error: 'Source URL already registered', sourceId: existing.id });
     }
 
-    const id = uuidv4();
-    const sourceTitle = title?.trim() || cleanUrl;
+    // CASE 1: Manual content/HTML provided
+    if (rawContent && rawContent.trim()) {
+      const id = existing ? existing.id : uuidv4();
+      const parsedArticle = parseContentOrHtml(rawContent, cleanUrl, sourceTitle);
 
+      if (!existing) {
+        await exec(
+          `INSERT INTO sources (id, type, url, title, feed_url, sync_interval_mins, status)
+           VALUES (?, ?, ?, ?, ?, ?, 'ready')`,
+          [id, type, cleanUrl, parsedArticle.title || sourceTitle, null, syncIntervalMins]
+        );
+      } else {
+        await exec(
+          `UPDATE sources SET title = ?, status = 'ready', error_message = NULL WHERE id = ?`,
+          [parsedArticle.title || sourceTitle, id]
+        );
+      }
+
+      await processAndIndexDocument(id, cleanUrl, parsedArticle);
+
+      const source = await queryOne<Source>(`
+        SELECT 
+          id, type, url, title, description,
+          feed_url as "feedUrl",
+          sync_interval_mins as "syncIntervalMins",
+          last_synced_at as "lastSyncedAt",
+          status, error_message as "errorMessage",
+          created_at as "createdAt"
+        FROM sources WHERE id = ?
+      `, [id]);
+
+      return res.status(201).json({ source, message: 'Source indexed successfully with manual content' });
+    }
+
+    // CASE 2: Single URL type without manual content - test scraping upfront
+    if (type === 'url') {
+      try {
+        const scraped = await scrapeUrl(cleanUrl);
+        const id = uuidv4();
+        await exec(
+          `INSERT INTO sources (id, type, url, title, feed_url, sync_interval_mins, status)
+           VALUES (?, ?, ?, ?, ?, ?, 'ready')`,
+          [id, type, cleanUrl, scraped.title || sourceTitle, null, syncIntervalMins]
+        );
+
+        await processAndIndexDocument(id, cleanUrl, scraped);
+
+        const newSource = await queryOne<Source>(`
+          SELECT 
+            id, type, url, title, description,
+            feed_url as "feedUrl",
+            sync_interval_mins as "syncIntervalMins",
+            last_synced_at as "lastSyncedAt",
+            status, error_message as "errorMessage",
+            created_at as "createdAt"
+          FROM sources WHERE id = ?
+        `, [id]);
+
+        return res.status(201).json({ source: newSource });
+      } catch (fetchErr: any) {
+        console.warn(`[Add Source] URL fetch failed for ${cleanUrl}:`, fetchErr.message);
+        return res.status(422).json({
+          error: fetchErr.message || 'Failed to fetch content from URL',
+          fetchFailed: true,
+          url: cleanUrl,
+          suggestedTitle: sourceTitle,
+        });
+      }
+    }
+
+    // CASE 3: RSS Feed type
+    const id = uuidv4();
     await exec(
       `INSERT INTO sources (id, type, url, title, feed_url, sync_interval_mins, status)
        VALUES (?, ?, ?, ?, ?, ?, 'syncing')`,
-      [
-        id,
-        type,
-        cleanUrl,
-        sourceTitle,
-        type === 'rss' ? cleanUrl : null,
-        syncIntervalMins,
-      ]
+      [id, type, cleanUrl, sourceTitle, cleanUrl, syncIntervalMins]
     );
 
-    // Trigger sync asynchronously in background
     syncSource(id).catch((err) => {
       console.error(`[Source Async Sync Error] ${id}:`, err);
     });
 
     const newSource = await queryOne<Source>(`
       SELECT 
-        id,
-        type,
-        url,
-        title,
-        description,
+        id, type, url, title, description,
         feed_url as "feedUrl",
         sync_interval_mins as "syncIntervalMins",
         last_synced_at as "lastSyncedAt",
-        status,
-        error_message as "errorMessage",
+        status, error_message as "errorMessage",
         created_at as "createdAt"
       FROM sources WHERE id = ?
     `, [id]);
     res.status(201).json({ source: newSource });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/sources/:id/manual-content
+router.post('/:id/manual-content', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rawContent, title } = req.body;
+
+    if (!rawContent || !rawContent.trim()) {
+      return res.status(400).json({ error: 'Content cannot be empty' });
+    }
+
+    const source = await queryOne<Source>('SELECT * FROM sources WHERE id = ?', [id]);
+    if (!source) {
+      return res.status(404).json({ error: 'Source not found' });
+    }
+
+    const parsedArticle = parseContentOrHtml(rawContent, source.url, title || source.title);
+    await processAndIndexDocument(id, source.url, parsedArticle);
+
+    await exec(
+      `UPDATE sources SET title = ?, status = 'ready', error_message = NULL, last_synced_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      [parsedArticle.title || source.title, id]
+    );
+
+    const updatedSource = await queryOne<Source>(`
+      SELECT 
+        id, type, url, title, description,
+        feed_url as "feedUrl",
+        sync_interval_mins as "syncIntervalMins",
+        last_synced_at as "lastSyncedAt",
+        status, error_message as "errorMessage",
+        created_at as "createdAt"
+      FROM sources WHERE id = ?
+    `, [id]);
+
+    res.json({ source: updatedSource, message: 'Source updated with manual content' });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
