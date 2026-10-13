@@ -20,10 +20,13 @@
 - **Fast Semantic Search**:
   - Real-time vector search with configurable **Top-K** and **Minimum Similarity** threshold sliders.
   - Filter by specific knowledge sources or search across the entire library.
-- **Conversational RAG Assistant**:
+- **Conversational RAG Assistant & Voice Mode**:
+  - **Live Voice Input**: Real-time microphone capture with animated sound waves and speech recognition.
+  - **Local Model Audio Translation**: Automatically routes spoken speech through your local Ollama model to translate from other languages (Spanish, French, German, Chinese, etc.), remove conversational filler words, and format into crisp research queries.
   - Multi-turn chat assistant grounded strictly in your saved articles.
   - Real-time token streaming via Server-Sent Events (SSE).
   - Expandable citation cards with direct links and chunk previews.
+  - **Text-to-Speech (TTS)**: Listen to the assistant read answers aloud with a single click.
 - **Document Library & Reader Mode**:
   - Clean article reading view with metadata (author, publication date, source).
   - Low-level vector chunk inspector with token counts and chunk indexing.

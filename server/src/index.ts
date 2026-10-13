@@ -20,6 +20,7 @@ import searchRouter from './routes/search.js';
 import chatRouter from './routes/chat.js';
 import modelsRouter from './routes/models.js';
 import statsRouter from './routes/stats.js';
+import voiceRouter from './routes/voice.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,6 +37,7 @@ app.use('/api/search', searchRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/models', modelsRouter);
 app.use('/api/stats', statsRouter);
+app.use('/api/voice', voiceRouter);
 
 // Health check endpoint
 app.get('/api/health', (_req, res) => {

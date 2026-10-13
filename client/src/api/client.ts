@@ -187,3 +187,19 @@ export async function streamChat(
     reader.releaseLock();
   }
 }
+
+export async function translateVoiceQuery(
+  text: string,
+  targetLanguage: string = 'English'
+): Promise<{ originalText: string; refinedText: string; model: string }> {
+  const res = await fetch(`${BASE_URL}/voice/translate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, targetLanguage }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Voice translation failed');
+  }
+  return await res.json();
+}

@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Trash2, Sparkles, Layers, BookOpen } from 'lucide-react';
+import { Send, Bot, User, Trash2, Sparkles, Layers, BookOpen, Volume2, VolumeX } from 'lucide-react';
 import { streamChat } from '../../api/client.js';
 import { CitationCard } from './CitationCard.js';
 import { FormattedMessage } from './FormattedMessage.js';
+import { VoiceRecorder } from './VoiceRecorder.js';
 import type { ChatMessage, SearchResult } from '../../../../shared/types.js';
 
 interface ChatInterfaceProps {
@@ -29,6 +30,42 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpenDocument, do
   useEffect(() => {
     scrollToBottom();
   }, [messages, isStreaming]);
+
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  const handleSpeakMessage = (msgId: string, text: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    if (speakingMessageId === msgId) {
+      window.speechSynthesis.cancel();
+      setSpeakingMessageId(null);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const cleanSpeech = text
+      .replace(/\[(?:Source\s*)?\d+\]/gi, '')
+      .replace(/[`*#_~]/g, '')
+      .trim();
+
+    if (!cleanSpeech) return;
+
+    const utterance = new SpeechSynthesisUtterance(cleanSpeech);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.onend = () => setSpeakingMessageId(null);
+    utterance.onerror = () => setSpeakingMessageId(null);
+    setSpeakingMessageId(msgId);
+    window.speechSynthesis.speak(utterance);
+  };
 
   const handleSend = async (messageText: string = input) => {
     const text = messageText.trim();
@@ -225,6 +262,34 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpenDocument, do
                     )}
                   </div>
 
+                  {/* Audio Read-Aloud Action */}
+                  {!isUser && message.content && !message.isStreaming && (
+                    <div className="flex items-center space-x-2 pt-0.5 text-slate-500 text-[11px]">
+                      <button
+                        type="button"
+                        onClick={() => handleSpeakMessage(message.id, message.content)}
+                        className={`flex items-center space-x-1 px-2 py-0.5 rounded-lg border transition-all ${
+                          speakingMessageId === message.id
+                            ? 'bg-sky-500/20 border-sky-500/40 text-sky-400 font-medium'
+                            : 'border-transparent hover:border-slate-800 hover:text-slate-300'
+                        }`}
+                        title={speakingMessageId === message.id ? 'Stop audio' : 'Read answer aloud'}
+                      >
+                        {speakingMessageId === message.id ? (
+                          <>
+                            <VolumeX className="w-3 h-3 text-sky-400 animate-pulse" />
+                            <span>Stop Audio</span>
+                          </>
+                        ) : (
+                          <>
+                            <Volume2 className="w-3 h-3" />
+                            <span>Listen</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+
                   {/* Citations section if available */}
                   {!isUser && message.citations && message.citations.length > 0 && (
                     <div className="space-y-2 pt-1">
@@ -258,8 +323,19 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpenDocument, do
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Form */}
-      <div className="p-4 bg-slate-950/90 border-t border-slate-800">
+      {/* Input Form & Voice Mode */}
+      <div className="p-4 bg-slate-950/90 border-t border-slate-800 space-y-3">
+        <VoiceRecorder
+          onTranscriptReady={(refinedQuery, autoSubmit) => {
+            if (autoSubmit) {
+              handleSend(refinedQuery);
+            } else {
+              setInput(refinedQuery);
+            }
+          }}
+          isProcessingParent={isStreaming}
+        />
+
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -276,7 +352,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpenDocument, do
             placeholder={
               docCount === 0
                 ? 'Add sources first to enable RAG chat...'
-                : 'Ask a question about your knowledge bank (Enter to send, Shift+Enter for newline)...'
+                : 'Ask a question or use Voice Mode above (Enter to send, Shift+Enter for newline)...'
             }
             className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500 resize-none max-h-32"
           />
