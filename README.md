@@ -2,6 +2,8 @@
 
 > A private, local-first Knowledge Bank built with **React 19**, **TypeScript**, embedded **DuckDB** vector store, and local **Ollama** models for fast semantic search and conversational RAG.
 
+![Knowledge Bank RAG Assistant](./knowledge-bank-rag-assistant-screenshot.png)
+
 ---
 
 ## 🌟 Key Features
